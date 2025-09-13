@@ -38,7 +38,7 @@ class Lemma
       optative: 'o',
       infinitive: 'n',
       imperative: 'm',
-      particle: 'p',
+      participle: 'p',
     },
     voice: {
       active: 'a',
@@ -62,6 +62,45 @@ class Lemma
       comparative: 'c',
       superlative: 's',
     },
+  }
+
+  PART_OF_SPEECH_REQUIRED = {
+    noun: [:number, :gender, :casus],
+    verb: [
+      { if: [:mood, :infinitive], then: [:tense, :mood, :voice] },
+      {
+        if: [:mood, :participle],
+        then: [:number, :tense, :mood, :voice, :gender, :casus]
+      },
+      { if: [:mood, :indicative], then: [:person, :number, :tense, :mood, :voice] },
+      { if: [:mood, :subjunctive], then: [:person, :number, :tense, :mood, :voice] },
+      { if: [:mood, :optative], then: [:person, :number, :tense, :mood, :voice] },
+      { if: [:mood, :imperative], then: [:person, :number, :tense, :mood, :voice] },
+      { if: [:mood, nil], then: [:mood] },
+    ],
+    adjective: [:number, :gender, :casus],
+    adverb: [],
+    article: [:number, :gender, :casus],
+    particle: [],
+    conjuncton: [],
+    adposition: [],
+    pronoun: [:number, :gender, :casus],
+    number: [],
+    interjection: [],
+  }
+
+  PART_OF_SPEECH_OPTIONAL = {
+    noun: [],
+    verb: [],
+    adjective: [:degree],
+    adverb: [:degree],
+    article: [],
+    particle: [],
+    conjuncton: [],
+    adposition: [],
+    pronoun: [],
+    number: [:number, :gender, :casus],
+    interjection: [],
   }
 
   PERSON_MAP = {
@@ -139,13 +178,13 @@ class Lemma
     @lemma = lemma
 
     @part_of_speech = part_of_speech
+
     tenses = Set.new(forms.map { |f| Lemma::TENSE_MAP[f] }.compact)
     if tenses.member?(:future) && tenses.member?(:perfect)
       @tense = :future_perfect
     else
       @tense = tenses.first
     end
-
 
     voices = Set.new
     tags.each do |tag|
@@ -159,14 +198,25 @@ class Lemma
       @degree ||= Lemma::DEGREE_MAP[tag]
     end
 
+    # TODO Workaround for bug in source data
+    if tags.member?('adverbial')
+      @part_of_speech = :adverb
+      @gender = nil
+    end
+
     if voices.member?(:middle) && voices.member?(:passive)
       @voice = :mediopassive
     else
       @voice = voices.first
     end
 
-    if mood == :participle && number.nil?
+    # TODO These are workarounds for messy source data, but I'm not happy with them
+    if mood == :participle && casus.nil? # From a verb table
       @number = :singular
+      @casus = :nominative
+    end
+    if part_of_speech == :verb && casus && gender # From a full entry
+      @mood = :participle
     end
   end
 
@@ -188,5 +238,59 @@ class Lemma
       casus,
       degree,
     ].compact.join(' ')
+  end
+
+  def errors
+    errs = []
+    attrs = attribute_map
+
+    if part_of_speech.nil?
+      return [:part_of_speech]
+    end
+
+    reqs = PART_OF_SPEECH_REQUIRED[part_of_speech].dup
+
+    until reqs.empty?
+      req = reqs.shift
+
+      if req.is_a?(Hash)
+        if req[:if] && self.public_send(req[:if].first) == req[:if].last
+          reqs.concat(req[:then])
+        end
+      else
+        if attrs[req]
+          attrs.delete(req)
+        else
+          errs << req
+        end
+      end
+    end
+
+    PART_OF_SPEECH_OPTIONAL[part_of_speech].each do |opt|
+      if attrs[opt]
+        attrs.delete(opt)
+      end
+    end
+
+    errs.concat(attrs.keys)
+  end
+
+  def valid?
+    errors.none?
+  end
+
+  private
+
+  def attribute_map
+    {
+      person: person,
+      number: number,
+      tense: tense,
+      mood: mood,
+      voice: voice,
+      gender: gender,
+      casus: casus,
+      degree: degree,
+    }.compact
   end
 end

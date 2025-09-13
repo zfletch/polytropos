@@ -29,11 +29,12 @@ class Entry
     'intj' => :interjection,
   }
 
-  attr_reader :dictionary, :headword, :part_of_speech, :variants
+  attr_reader :dictionary, :headword, :part_of_speech, :failures, :variants
 
   def initialize(dictionary, headword, part_of_speech)
     @dictionary = dictionary
     @headword = headword
+    @failures = []
     @part_of_speech = Entry::PART_OF_SPEECH_MAP[part_of_speech]
     @variants = []
   end
@@ -42,18 +43,25 @@ class Entry
     Util.bare_form(headword)
   end
 
-  def add_variant(lemma, tags: [], forms: [])
-    variant = Variant.new(self, lemma, tags: tags, forms: forms)
+  def create_variant(lemma, tags: [], forms: [])
+    Variant.new(self, lemma, tags: tags, forms: forms)
+  end
 
-    dictionary.add_lemma(variant)
-    variants << variant
+  def compact_and_update_dictionary!
+    variants.uniq!(&:to_s)
 
-    variant
+    variants.each { |v| dictionary.add_variant(v) }
+
+    self
   end
 
   def to_s
     [
       headword
     ]
+  end
+
+  def inspect
+    to_s
   end
 end

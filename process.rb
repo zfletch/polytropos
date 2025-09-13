@@ -6,7 +6,7 @@ require 'optparse'
 require_relative './lib/dictionary'
 require_relative './lib/util'
 
-# Hack to get around issue in source data
+# TODO Hack to get around issue in source data
 def clean_up_definite_article(entry, lemma)
   regex = /\A(?:ὁ|ἡ|τό|τὸ|τοῦ|τῆς|τῷ|τῇ|τόν|τὸν|τήν|τὴν|οἱ|αἱ|τά|τὰ|τῶν|τοῖς|ταῖς|τούς|τοὺς|τάς|τὰς|τώ|τὼ|τοῖν|ταῖν) /i
 
@@ -70,14 +70,24 @@ def build_dictionary(filename)
       next if lemma.nil? || lemma.strip.empty? || lemma == '-'
 
       if genders.empty?
-        entry.add_variant(lemma, tags: tags, forms: table_level_tags)
+        variant = entry.create_variant(lemma, tags: tags, forms: table_level_tags)
+        variant.save!
       else
         genders.each do |gender|
           new_tags = tags + [gender]
-          entry.add_variant(lemma, tags: new_tags, forms: table_level_tags)
+          variant = entry.create_variant(lemma, tags: new_tags, forms: table_level_tags)
+          variant.save!
         end
       end
     end
+
+    word = entry_json['word']
+    if entry.variants.empty? && !word.empty?
+      variant = entry.create_variant(word)
+      entry.create_variant(word).save!
+    end
+
+    entry.compact_and_update_dictionary!
   end
 
   dictionary
