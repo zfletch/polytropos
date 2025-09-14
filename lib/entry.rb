@@ -56,9 +56,7 @@ class Entry
   end
 
   def to_s
-    [
-      headword
-    ]
+    headword
   end
 
   def inspect

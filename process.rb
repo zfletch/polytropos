@@ -18,7 +18,7 @@ def clean_up_definite_article(entry, lemma)
 end
 
 def extract_gender_from_head_template(entry_json)
-  gender_set = Set.new(['M', 'm', 'F', 'f'])
+  gender_set = Set.new(['M', 'm', 'F', 'f', 'N', 'n'])
   head_template_json = entry_json['head_templates']
   return [] unless head_template_json.is_a?(Array)
 
@@ -67,7 +67,11 @@ def build_dictionary(filename)
 
       lemma = variant_json['form']
       lemma = clean_up_definite_article(entry, lemma)
-      next if lemma.nil? || lemma.strip.empty? || lemma == '-'
+
+      next if lemma.nil? ||
+        lemma.strip.empty? ||
+        lemma == '-' ||
+        lemma =~ /\p{Latin}/
 
       if genders.empty?
         variant = entry.create_variant(lemma, tags: tags, forms: table_level_tags)
