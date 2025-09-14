@@ -14,13 +14,13 @@ load 'process.rb'
 
 d = build_dictionary('data/small.2025-09.jsonl')
 
-d.look_up('ερωταομενη').map(&:to_s)
-# => ["ἐρωτᾰομένη : verb singular present participle mediopassive feminine"] 
+d.look_up('ερωταομενη')
+# => [ἐρωτᾰομένη : verb singular present participle mediopassive feminine nominative]
 
-d.forms_of('λογος').last(3).map(&:to_s)
-# => ["λόγε : noun singular masculine vocative",
-#     "λόγω : noun dual masculine vocative",
-#     "λόγοι : noun plural masculine vocative"]
+d.forms_of('λογος').first(3)
+# => [λόγος : noun singular masculine nominative,
+#     λόγω : noun dual masculine nominative,
+#     λόγοι : noun plural masculine nominative]
 ```
 
 ## Downloading the data
